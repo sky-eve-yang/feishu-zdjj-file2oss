@@ -105,24 +105,21 @@ basekit.addField({
 
   
     // 构造请求体
-    const params = new URLSearchParams();
-    params.append('access_key_id', accessKeyId);
-    params.append('access_key_secret', accessKeySecret);
-    params.append('bucket_name', bucket);
-    params.append('endpoint', `https://${region}.aliyuncs.com`);
+    const formData  = new FormData();
+    formData.append('access_key_id', accessKeyId);
+    formData.append('access_key_secret', accessKeySecret);
+    formData.append('bucket_name', bucket);
+    formData.append('endpoint', `https://${region}.aliyuncs.com`);
 
     for (let i = 0; i < file.length; i++) {
       const fileUrl = file[i].tmp_url;
       const response = await fetch(fileUrl);
       const blob = await response.blob();
-      const fileObject = new File([blob], "image.jpg", { type: blob.type });
-      params.append('file', fileObject);
+      const fileObject = new File([blob], "image.png", { type: blob.type });
+      formData.append('file', fileObject);
       let res = await context.fetch(`https://util-transfer-file-2-cdn-wuyi.replit.app/upload`, { // 已经在addDomainList中添加为白名单的请求
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: params,
+        body: formData,
       }).then(res => res.json());
       
       console.log("res", res)
