@@ -2,7 +2,7 @@ import { basekit, FieldType, field, FieldComponent, FieldCode, NumberFormatter, 
 const { t } = field;
 
 // 通过addDomainList添加请求接口的域名
-basekit.addDomainList(['replit.app', 'feishu.cn']);
+basekit.addDomainList(['replit.app', 'feishu.cn', 'replit.dev']);
 
 basekit.addField({
   // 定义捷径的i18n语言资源
@@ -22,16 +22,30 @@ basekit.addField({
         'ossLink': 'CDN'
       },
       'en-US': {
-        'shortcut': 'Short Link',
-        'noteId': 'Note ID',
-        'longLink': 'Long Link',
-        'placeholderShortcut': 'Please select the corresponding field for Xiaohongshu Short Link',
+        "file": "Attachment",
+        "accessKeyId": "Access Key ID",
+        "accessKeySecret": "Access Key Secret",
+        "bucket": "Bucket",
+        "region": "Region",
+        "filePlaceholder": "Please select an attachment field",
+        "accessKeyIdPlaceholder": "Please enter Access Key ID",
+        "accessKeySecretPlaceholder": "Please enter Access Key Secret",
+        "bucketPlaceholder": "Please fill in the bucket name",
+        "regionPlaceholder": "For example, oss-cn-beijing",
+        "ossLink": "CDN"
       },
       'ja-JP': {
-        'shortcut': 'ショートリンク',
-        'noteId': 'ノート ID',
-        'longLink': 'ロングリンク',
-        'placeholderShortcut': '小红書のショートリンクに対応するフィールドを選択してください',
+        "file": "添付ファイル",
+        "accessKeyId": "アクセスキーID",
+        "accessKeySecret": "アクセスキーシークレット",
+        "bucket": "バケット",
+        "region": "リージョン",
+        "filePlaceholder": "添付ファイルフィールドを選択してください",
+        "accessKeyIdPlaceholder": "アクセスキーIDを入力してください",
+        "accessKeySecretPlaceholder": "アクセスキーシークレットを入力してください",
+        "bucketPlaceholder": "バケット名を入力してください",
+        "regionPlaceholder": "例: oss-cn-beijing",
+        "ossLink": "CDN"
       },
     }
   },
@@ -47,7 +61,14 @@ basekit.addField({
       },
       validator: {
         required: true,
-      }
+      },
+      tooltips: [
+        {
+          type: 'link',
+          text: '目前仅支持阿里云 OSS，点击查看说明文档',
+          'link': 'https://jfsq6znqku.feishu.cn/wiki/EyUvw23pBiMoekkoQFycTuRanrd?fromScene=spaceOverview&table=tblV0R5XjA7MdHZB&view=vewjp62yxa'
+        }
+      ],
     },
     {
       key: 'accessKeyId',
@@ -102,59 +123,41 @@ basekit.addField({
     
     const { file, accessKeyId, accessKeySecret, bucket, region } = formItemParams;
 
-
-  
-    // 构造请求体
-    const formData  = new FormData();
-    formData.append('access_key_id', accessKeyId);
-    formData.append('access_key_secret', accessKeySecret);
-    formData.append('bucket_name', bucket);
-    formData.append('endpoint', `https://${region}.aliyuncs.com`);
-
-    for (let i = 0; i < file.length; i++) {
-      const fileUrl = file[i].tmp_url;
-      const response = await fetch(fileUrl);
-      const blob = await response.blob();
-      const fileObject = new File([blob], "image.png", { type: blob.type });
-      formData.append('file', fileObject);
-      let res = await context.fetch(`https://util-transfer-file-2-cdn-wuyi.replit.app/upload`, { // 已经在addDomainList中添加为白名单的请求
-        method: 'POST',
-        body: formData,
-      }).then(res => res.json());
-      
-      console.log("res", res)
-
-    }
-
-    return {
-      code: FieldCode.Success,
-      data: {
-        ossLink: '1'
-
-      }
-    }
-
-
     try {
-      const res = await context.fetch(`https://util-transfer-file-2-cdn-wuyi.replit.app/upload`, { // 已经在addDomainList中添加为白名单的请求
-        method: 'POST',
-        body: formData,
-      }).then(res => res.json());
+      // 构造请求体
+      const params  = new URLSearchParams();
+      params.append('access_key_id', accessKeyId);
+      params.append('access_key_secret', accessKeySecret);
+      params.append('bucket_name', bucket);
+      params.append('endpoint', `https://${region}.aliyuncs.com`);
+      console.log(accessKeyId, accessKeySecret, bucket, region)
+      let cdnLinks = '';
+      for (let i = 0; i < file.length; i++) {
+        const fileUrl = file[i].tmp_url;
+        params.append('file_url', fileUrl);
 
-      const xhsInfo = res?.data;
-      console.log("xhsInfo", xhsInfo)
+        let res = await context.fetch(`https://util-transfer-file-2-cdn-wuyi.replit.app/upload-by-url`, { // 已经在addDomainList中添加为白名单的请求
+          method: 'POST',
+          body: params,
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+          },
+        }).then(res => res.json());
+
+        cdnLinks += res.url + ';';
+      }
+      cdnLinks = cdnLinks.slice(0, -1)
+
       return {
         code: FieldCode.Success,
-        data: {
-          ossLink: xhsInfo.long_url.split('?')[0]
-
-        }
+        data: cdnLinks
       }
     } catch (e) {
       return {
         code: FieldCode.Error,
       }
     }
+
   },
 });
 export default basekit;
